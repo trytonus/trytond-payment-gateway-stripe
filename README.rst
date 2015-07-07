@@ -1,0 +1,2 @@
+trytond-payment-gateway-stripe
+==========================
