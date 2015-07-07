@@ -2,5 +2,6 @@
 -r requirements.txt
 
 tox
+pytest
 coverage
 flake8
