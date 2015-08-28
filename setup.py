@@ -24,7 +24,7 @@ requires = [
 ]
 
 MODULE2PREFIX = {
-    'payment_gateway': 'openlabs',
+    'payment_gateway': 'fio',
 }
 
 MODULE = "payment_gateway_stripe"
