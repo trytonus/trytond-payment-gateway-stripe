@@ -81,7 +81,10 @@ class PaymentTransactionStripe:
             self.state = 'authorized'
             self.provider_reference = charge.id
             self.save()
-            TransactionLog.serialize_and_create(self, charge)
+            TransactionLog.create([{
+                'transaction': self,
+                'log': unicode(charge),
+            }])
 
     def settle_stripe(self):
         """
@@ -108,7 +111,10 @@ class PaymentTransactionStripe:
             self.state = 'completed'
             self.provider_reference = charge.id
             self.save()
-            TransactionLog.serialize_and_create(self, charge)
+            TransactionLog.create([{
+                'transaction': self,
+                'log': unicode(charge),
+            }])
             self.safe_post()
 
     def capture_stripe(self, card_info=None):
@@ -136,7 +142,10 @@ class PaymentTransactionStripe:
             self.state = 'completed'
             self.provider_reference = charge.id
             self.save()
-            TransactionLog.serialize_and_create(self, charge)
+            TransactionLog.create([{
+                'transaction': self,
+                'log': unicode(charge),
+            }])
             self.safe_post()
 
     def get_stripe_charge_data(self, card_info=None):
@@ -207,7 +216,10 @@ class PaymentTransactionStripe:
         else:
             self.state = 'cancel'
             self.save()
-            TransactionLog.serialize_and_create(self, charge)
+            TransactionLog.create([{
+                'transaction': self,
+                'log': unicode(charge),
+            }])
 
 
 class AddPaymentProfileView:
