@@ -78,10 +78,16 @@ class PaymentTransactionStripe:
             self.save()
             TransactionLog.serialize_and_create(self, exc.json_body)
         else:
-            self.state = 'authorized'
+            if charge.status == 'succeeded':
+                self.state = 'authorized'
+            else:
+                self.state = 'failed'
             self.provider_reference = charge.id
             self.save()
-            TransactionLog.serialize_and_create(self, charge)
+            TransactionLog.create([{
+                'transaction': self,
+                'log': unicode(charge),
+            }])
 
     def settle_stripe(self):
         """
@@ -95,7 +101,7 @@ class PaymentTransactionStripe:
 
         try:
             charge = stripe.Charge.retrieve(self.provider_reference)
-            charge.capture(amount=int(self.amount * 100))
+            charge = charge.capture(amount=int(self.amount * 100))
         except (
             stripe.error.InvalidRequestError,
             stripe.error.AuthenticationError, stripe.error.APIConnectionError,
@@ -105,10 +111,16 @@ class PaymentTransactionStripe:
             self.save()
             TransactionLog.serialize_and_create(self, exc.json_body)
         else:
-            self.state = 'completed'
+            if charge.status == 'succeeded':
+                self.state = 'completed'
+            else:
+                self.state = 'failed'
             self.provider_reference = charge.id
             self.save()
-            TransactionLog.serialize_and_create(self, charge)
+            TransactionLog.create([{
+                'transaction': self,
+                'log': unicode(charge),
+            }])
             self.safe_post()
 
     def capture_stripe(self, card_info=None):
@@ -133,10 +145,16 @@ class PaymentTransactionStripe:
             self.save()
             TransactionLog.serialize_and_create(self, exc.json_body)
         else:
-            self.state = 'completed'
+            if charge.status == 'succeeded':
+                self.state = 'completed'
+            else:
+                self.state = 'failed'
             self.provider_reference = charge.id
             self.save()
-            TransactionLog.serialize_and_create(self, charge)
+            TransactionLog.create([{
+                'transaction': self,
+                'log': unicode(charge),
+            }])
             self.safe_post()
 
     def get_stripe_charge_data(self, card_info=None):
@@ -207,7 +225,10 @@ class PaymentTransactionStripe:
         else:
             self.state = 'cancel'
             self.save()
-            TransactionLog.serialize_and_create(self, charge)
+            TransactionLog.create([{
+                'transaction': self,
+                'log': unicode(charge),
+            }])
 
 
 class AddPaymentProfileView:
