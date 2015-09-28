@@ -230,6 +230,34 @@ class PaymentTransactionStripe:
                 'log': unicode(charge),
             }])
 
+    def refund_stripe(self):
+        TransactionLog = Pool().get('payment_gateway.transaction.log')
+
+        stripe.api_key = self.gateway.stripe_api_key
+
+        try:
+            refund = stripe.Refund.create(
+                charge=self.origin.provider_reference,
+                amount=int(self.amount * 100),  # Amount is in cents
+            )
+        except (
+            stripe.error.InvalidRequestError,
+            stripe.error.AuthenticationError, stripe.error.APIConnectionError,
+            stripe.error.StripeError
+        ), exc:
+            self.state = 'failed'
+            self.save()
+            TransactionLog.serialize_and_create(self, exc.json_body)
+        else:
+            self.provider_reference = refund.id
+            self.state = 'completed'
+            self.save()
+            TransactionLog.create([{
+                'transaction': self,
+                'log': unicode(refund),
+            }])
+            self.safe_post()
+
 
 class AddPaymentProfileView:
     __name__ = 'party.payment_profile.add_view'

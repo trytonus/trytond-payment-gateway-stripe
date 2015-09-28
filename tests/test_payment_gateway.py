@@ -5,6 +5,8 @@
     :copyright: (C) 2015 by Fulfil.IO Inc.
     :license: see LICENSE for more details.
 """
+from decimal import Decimal
+
 import pytest
 from trytond.transaction import Transaction
 from trytond.exceptions import UserError
@@ -325,3 +327,41 @@ class TestPaymentGateway:
 
         PaymentTransaction.cancel([transaction1])
         assert transaction1.state == 'cancel'
+
+    def test_0080_test_transaction_refund(self, dataset, transaction):
+        """Test refund transaction
+        """
+        PaymentTransaction = self.POOL.get('payment_gateway.transaction')
+
+        data = dataset()
+
+        assert data.customer.payable == Decimal('0')
+        assert data.customer.receivable == Decimal('0')
+
+        payment_profile = self.create_payment_profile(
+            data.customer, data.stripe_gateway
+        )
+        transaction1, = PaymentTransaction.create([{
+            'party': data.customer.id,
+            'address': data.customer.addresses[0].id,
+            'payment_profile': payment_profile.id,
+            'gateway': data.stripe_gateway.id,
+            'amount': Decimal('10.10'),
+            'credit_account': data.customer.account_receivable.id,
+        }])
+
+        # Capture transaction
+        PaymentTransaction.capture([transaction1])
+        assert transaction1.state == 'posted'
+
+        assert data.customer.payable == Decimal('0')
+        assert data.customer.receivable == -Decimal('10')
+
+        refund_transaction = transaction1.create_refund()
+
+        # Refund this transaction
+        PaymentTransaction.refund([refund_transaction])
+
+        assert refund_transaction.state == 'posted'
+        assert data.customer.payable == Decimal('0')
+        assert data.customer.receivable == Decimal('0')
