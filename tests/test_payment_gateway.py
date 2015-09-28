@@ -346,7 +346,7 @@ class TestPaymentGateway:
             'address': data.customer.addresses[0].id,
             'payment_profile': payment_profile.id,
             'gateway': data.stripe_gateway.id,
-            'amount': Decimal('10'),
+            'amount': Decimal('10.10'),
             'credit_account': data.customer.account_receivable.id,
         }])
 
