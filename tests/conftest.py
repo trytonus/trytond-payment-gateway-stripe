@@ -41,6 +41,9 @@ def install_module(request):
 def transaction(request):
     """Yields transaction with installed module.
     """
+
+    # Importing transaction directly causes cyclic dependency in 3.6
+    from trytond.tools.singleton import Singleton  # noqa
     from trytond.transaction import Transaction
     from trytond.tests.test_tryton import USER, CONTEXT, DB_NAME, POOL
 
