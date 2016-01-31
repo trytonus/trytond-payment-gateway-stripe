@@ -49,6 +49,14 @@ class PaymentGatewayStripe:
             ]
         return super(PaymentGatewayStripe, self).get_methods()
 
+    @classmethod
+    def view_attributes(cls):
+        return super(PaymentGatewayStripe, cls).view_attributes() + [(
+            '//page[@id="stripe"]', 'states', {
+                'invisible': Eval('provider') != 'stripe'
+            }
+        )]
+
 
 class PaymentTransactionStripe:
     """
