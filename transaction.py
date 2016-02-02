@@ -52,7 +52,7 @@ class PaymentGatewayStripe:
     @classmethod
     def view_attributes(cls):
         return super(PaymentGatewayStripe, cls).view_attributes() + [(
-            '//page[@id="stripe"]', 'states', {
+            '//notebook/page[@id="stripe"]', 'states', {
                 'invisible': Eval('provider') != 'stripe'
             }
         )]
