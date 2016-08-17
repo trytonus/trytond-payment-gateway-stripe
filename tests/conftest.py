@@ -9,30 +9,72 @@ import os
 import time
 import datetime
 from collections import namedtuple
+from trytond.config import config
+from trytond.pool import Pool
 from dateutil.relativedelta import relativedelta
-
 import pytest
 
 
 def pytest_addoption(parser):
+
     parser.addoption(
         "--db", action="store", default="sqlite",
         help="Run on database: sqlite or postgres"
-    )
+        )
+    parser.addoption(
+        "--reuse-db", action="store_true", default=False,
+        help="Reuse the previously created database"
+        )
+    parser.addoption(
+        "--reset-db", action="store_true", default=False,
+        help="Clear local database and initialise"
+        )
 
 
 @pytest.fixture(scope='session', autouse=True)
 def install_module(request):
     """Install tryton module in specified database.
-    """
+     """
+    reuse_db = request.config.getoption("--reuse-db")
+
     if request.config.getoption("--db") == 'sqlite':
         os.environ['TRYTOND_DATABASE_URI'] = "sqlite://"
-        os.environ['DB_NAME'] = ':memory:'
+        if reuse_db:
+            # A hack to check if the database exists and if it
+            # does, load that and run tests.
+            Database = backend.get('Database')
+
+            # cursor.test forgets to set flavor!
+            # no time to report a bug!
+            Flavor.set(Database.flavor)
+            os.environ['DB_NAME'] = 'fulfilio'
+        else:
+            os.environ['DB_NAME'] = ':memory:'
 
     elif request.config.getoption("--db") == 'postgres':
         os.environ['TRYTOND_DATABASE_URI'] = "postgresql://"
-        os.environ['DB_NAME'] = 'test_' + str(int(time.time()))
+        if reuse_db:
+            os.environ['DB_NAME'] = 'test_fulfilio'
+        else:
+            os.environ['DB_NAME'] = 'test_' + str(int(time.time()))
 
+    if reuse_db:
+        Database = backend.get('Database')
+        database = Database().connect()
+        cursor = database.cursor()
+        databases = database.list(cursor)
+        cursor.close()
+        if os.environ['DB_NAME'] in databases:
+            if request.config.getoption("--reset-db"):
+                    cursor = database.cursor()
+                    databases = database.drop(cursor, os.environ['DB_NAME'])
+                    cursor.close()
+            else:
+                # tryton test forgets to init the pool
+                # for existing database
+                Pool(os.environ['DB_NAME']).init()
+
+    config.set('database', 'uri', os.environ['TRYTOND_DATABASE_URI'])
     from trytond.tests import test_tryton
     test_tryton.install_module('payment_gateway_stripe')
 
@@ -43,9 +85,10 @@ def transaction(request):
     """
 
     # Importing transaction directly causes cyclic dependency in 3.6
+    from trytond.tests.test_tryton import USER, CONTEXT, DB_NAME, POOL
     from trytond.tools.singleton import Singleton  # noqa
     from trytond.transaction import Transaction
-    from trytond.tests.test_tryton import USER, CONTEXT, DB_NAME, POOL
+    from trytond.cache import Cache
 
     # Inject helper functions in instance on which test function was collected.
     request.instance.POOL = POOL
@@ -53,10 +96,12 @@ def transaction(request):
     request.instance.CONTEXT = CONTEXT
     request.instance.DB_NAME = DB_NAME
 
-    with Transaction().start(DB_NAME, USER, context=CONTEXT) as transaction:
-        yield transaction
+    transaction = Transaction()
 
-        transaction.cursor.rollback()
+    with transaction.start(DB_NAME, USER, context=CONTEXT) as txn:
+        yield txn
+        transaction.rollback()
+        Cache.drop(DB_NAME)
 
 
 @pytest.fixture(scope='session')
@@ -160,9 +205,10 @@ def dataset(request):
         FiscalYear.create_period([fiscal_year])
 
         # Create minimal chart of account
-        account_template, = AccountTemplate.search(
-            [('parent', '=', None)]
-        )
+        account_template, = AccountTemplate.search([
+            ('parent', '=', None),
+            ('name', '=', 'Minimal Account Chart')
+        ])
 
         session_id, _, _ = AccountCreateChart.create()
         create_chart = AccountCreateChart(session_id)
@@ -230,7 +276,7 @@ def dataset(request):
             'stripe_gateway': stripe_gateway,
         }
 
-        transaction.cursor.commit()
+        transaction.commit()
 
     def get():
         from trytond.model import Model
@@ -241,3 +287,5 @@ def dataset(request):
         return namedtuple('Dataset', result.keys())(**result)
 
     return get
+
+
