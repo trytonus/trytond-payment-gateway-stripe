@@ -73,6 +73,7 @@ class PaymentTransactionStripe:
         stripe.api_key = self.gateway.stripe_api_key
 
         charge_data = self.get_stripe_charge_data(card_info=card_info)
+        charge_data['idempotency_key'] = 'auth_%s' % self.uuid
         charge_data['capture'] = False
 
         try:
@@ -140,6 +141,7 @@ class PaymentTransactionStripe:
         stripe.api_key = self.gateway.stripe_api_key
 
         charge_data = self.get_stripe_charge_data(card_info=card_info)
+        charge_data['idempotency_key'] = 'capture_%s' % self.uuid
         charge_data['capture'] = True
 
         try:
@@ -223,7 +225,9 @@ class PaymentTransactionStripe:
         stripe.api_key = self.gateway.stripe_api_key
 
         try:
-            charge = stripe.Charge.retrieve(self.provider_reference).refund()
+            charge = stripe.Charge.retrieve(
+                self.provider_reference
+            ).refund(idempotency_key=('refund_%s' % self.uuid))
         except (
             stripe.error.InvalidRequestError,
             stripe.error.AuthenticationError, stripe.error.APIConnectionError,
