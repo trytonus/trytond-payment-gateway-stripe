@@ -355,7 +355,7 @@ class TestPaymentGateway:
         assert transaction1.state == 'posted'
 
         assert data.customer.payable == Decimal('0')
-        assert data.customer.receivable == -Decimal('10')
+        assert data.customer.receivable == -Decimal('10.1')
 
         refund_transaction = transaction1.create_refund()
 
