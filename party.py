@@ -5,8 +5,12 @@
     :copyright: (c) 2015 by Fulfil.IO Inc.
     :license: see LICENSE for more details.
 """
+import stripe
+
 from trytond.pool import PoolMeta, Pool
 from trytond.model import fields
+from trytond.rpc import RPC
+from trytond.exceptions import UserError
 
 __metaclass__ = PoolMeta
 __all__ = ['Address', 'PaymentProfile', 'Party']
@@ -35,6 +39,42 @@ class PaymentProfile:
     stripe_customer_id = fields.Char(
         'Stripe Customer ID', readonly=True
     )
+
+    @classmethod
+    def __setup__(cls):
+        super(PaymentProfile, cls).__setup__()
+        cls.__rpc__.update({
+            'create_profile_using_stripe_token': RPC(
+                instantiate=0, readonly=True
+            ),
+        })
+
+    @classmethod
+    def create_profile_using_stripe_token(cls, user_id, gateway_id, token):
+        """
+        Create a Stripe Customer Object and return its ID
+        """
+        Party = Pool().get('party.party')
+        PaymentGateway = Pool().get('payment_gateway.gateway')
+
+        party = Party(user_id)
+        gateway = PaymentGateway(gateway_id)
+        assert gateway.provider == 'stripe'
+        stripe.api_key = gateway.stripe_api_key
+
+        try:
+            customer = stripe.Customer.create(
+                source=token,
+                description=party.name,
+            )
+        except (
+            stripe.error.CardError, stripe.error.InvalidRequestError,
+            stripe.error.AuthenticationError, stripe.error.APIConnectionError,
+            stripe.error.StripeError
+        ), exc:
+            raise UserError(exc.json_body['error']['message'])
+        else:
+            return customer.id
 
 
 class Party:
