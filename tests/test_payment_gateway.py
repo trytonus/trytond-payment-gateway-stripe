@@ -7,6 +7,7 @@
 """
 from decimal import Decimal
 
+import stripe
 import pytest
 # Importing transaction directly causes cyclic dependency in 3.6
 from trytond.tools.singleton import Singleton  # noqa
@@ -367,3 +368,25 @@ class TestPaymentGateway:
         assert refund_transaction.state == 'posted'
         assert data.customer.payable == Decimal('0')
         assert data.customer.receivable == Decimal('0')
+
+    def test_create_stripe_profile(self, dataset, transaction):
+        """
+        Test 'create_stripe_profile' method which should return
+        'customer_id'
+        """
+        PaymentProfile = self.POOL.get('party.payment_profile')
+        data = dataset()
+
+        stripe.api_key = data.stripe_gateway.stripe_api_key
+        token = stripe.Token.create(card={
+            "number": '4242424242424242',
+            "exp_month": 12,
+            "exp_year": 2016,
+            "cvc": '123'
+        })
+
+        customer_id = PaymentProfile.create_profile_using_stripe_token(
+            data.customer.id, data.stripe_gateway.id, token
+        )
+
+        assert customer_id is not None
