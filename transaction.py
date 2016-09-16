@@ -31,6 +31,13 @@ class PaymentGatewayStripe:
         }, depends=['provider', 'active']
     )
 
+    stripe_publishable_key = fields.Char(
+        'Stripe Publishable Key', states={
+            'invisible': Eval('provider') != 'stripe',
+            'readonly': Not(Bool(Eval('active'))),
+        }, depends=['provider', 'active']
+    )
+
     @classmethod
     def get_providers(cls, values=None):
         """
