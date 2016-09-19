@@ -50,12 +50,15 @@ class PaymentProfile:
         })
 
     @classmethod
-    def create_profile_using_stripe_token(cls, user_id, gateway_id, token):
+    def create_profile_using_stripe_token(
+        cls, user_id, gateway_id, token, address_id=None
+    ):
         """
-        Create a Stripe Customer Object and return its ID
+        Create a Payment Profile using token
         """
         Party = Pool().get('party.party')
         PaymentGateway = Pool().get('payment_gateway.gateway')
+        PaymentProfile = Pool().get('party.payment_profile')
 
         party = Party(user_id)
         gateway = PaymentGateway(gateway_id)
@@ -67,6 +70,7 @@ class PaymentProfile:
                 source=token,
                 description=party.name,
             )
+            card = customer.sources.data[0]
         except (
             stripe.error.CardError, stripe.error.InvalidRequestError,
             stripe.error.AuthenticationError, stripe.error.APIConnectionError,
@@ -74,7 +78,18 @@ class PaymentProfile:
         ), exc:
             raise UserError(exc.json_body['error']['message'])
         else:
-            return customer.id
+            profile, = PaymentProfile.create([{
+                'party': party.id,
+                'address': address_id or party.addresses[0].id,
+                'gateway': gateway.id,
+                'last_4_digits': card.last4,
+                'expiry_month': unicode('%02d' % card.exp_month),
+                'expiry_year': unicode(card.exp_year),
+                'provider_reference': card.id,
+                'stripe_customer_id': customer.id,
+            }])
+
+            return profile.id
 
 
 class Party:
