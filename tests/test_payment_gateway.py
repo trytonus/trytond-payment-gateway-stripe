@@ -397,3 +397,50 @@ class TestPaymentGateway:
         assert payment_profile.expiry_month == '09'
         assert payment_profile.expiry_year == '2020'
         assert payment_profile.stripe_customer_id is not None
+
+
+    def test_update_stripe_profile(self, dataset, transaction):
+        """
+        Update the card holder name and billing address
+        """
+        PaymentProfile = self.POOL.get('party.payment_profile')
+        data = dataset()
+
+        stripe.api_key = data.stripe_gateway.stripe_api_key
+        token = stripe.Token.create(card={
+            "number": '4242424242424242',
+            "exp_month": 9,
+            "exp_year": 2020,
+            "cvc": '123'
+        })
+
+        payment_profile_id = PaymentProfile.create_profile_using_stripe_token(
+            data.customer.id, data.stripe_gateway.id, token
+        )
+        payment_profile = PaymentProfile(payment_profile_id)
+
+        assert isinstance(payment_profile_id, int)
+        card = stripe.Customer.retrieve(
+            payment_profile.stripe_customer_id
+        ).sources.retrieve(payment_profile.provider_reference)
+
+        assert card.address_line1 is None
+        assert card.address_line2 is None
+        assert card.address_city is None
+        assert card.address_zip is None
+        assert card.address_state is None
+        assert card.address_country is None
+
+        # Now update the address on fulfil
+        payment_profile.update_stripe()
+
+        # read card again
+        card = stripe.Customer.retrieve(
+            payment_profile.stripe_customer_id
+        ).sources.retrieve(payment_profile.provider_reference)
+        assert card.address_line1 == payment_profile.address.street
+        assert card.address_line2 == payment_profile.address.streetbis
+        assert card.address_city == payment_profile.address.city
+        assert card.address_zip == payment_profile.address.zip
+        assert card.address_state == payment_profile.address.subdivision.code
+        assert card.address_country == payment_profile.address.country.code
