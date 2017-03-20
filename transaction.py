@@ -14,7 +14,7 @@ from trytond.exceptions import UserError
 
 __metaclass__ = PoolMeta
 __all__ = [
-    'PaymentGatewayStripe', 'PaymentTransactionStripe', 'AddPaymentProfileView',
+    'PaymentGatewayStripe', 'PaymentTransactionStripe',
     'AddPaymentProfile'
 ]
 
@@ -276,19 +276,6 @@ class PaymentTransactionStripe:
                 'log': unicode(refund),
             }])
             self.safe_post()
-
-
-class AddPaymentProfileView:
-    __name__ = 'party.payment_profile.add_view'
-
-    @classmethod
-    def get_providers(cls):
-        """
-        Add Stripe to the list of providers who support payment profiles.
-        """
-        res = super(AddPaymentProfileView, cls).get_providers()
-        res.append(('stripe', 'Stripe'))
-        return res
 
 
 class AddPaymentProfile:
