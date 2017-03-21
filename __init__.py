@@ -8,7 +8,7 @@
 from trytond.pool import Pool
 from party import Address, PaymentProfile, Party
 from transaction import PaymentGatewayStripe, PaymentTransactionStripe, \
-    AddPaymentProfileView, AddPaymentProfile
+    AddPaymentProfile
 
 
 def register():
@@ -18,7 +18,6 @@ def register():
         PaymentGatewayStripe,
         PaymentTransactionStripe,
         Party,
-        AddPaymentProfileView,
         module='payment_gateway_stripe', type_='model'
     )
     Pool.register(
