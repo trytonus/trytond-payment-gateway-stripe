@@ -47,7 +47,45 @@ class PaymentProfile:
             'create_profile_using_stripe_token': RPC(
                 instantiate=0, readonly=True
             ),
+            'update_stripe': RPC(
+                instantiate=0, readonly=False
+            ),
         })
+
+    def update_stripe(self):
+        """
+        Update this payment profile on the gateway (stripe)
+        """
+        assert self.gateway.provider == 'stripe'
+        stripe.api_key = self.gateway.stripe_api_key
+
+        try:
+            card = stripe.Customer.retrieve(
+                self.stripe_customer_id
+            ).sources.retrieve(self.provider_reference)
+        except (
+            stripe.error.CardError, stripe.error.InvalidRequestError,
+            stripe.error.AuthenticationError, stripe.error.APIConnectionError,
+            stripe.error.StripeError
+        ), exc:
+            raise UserError(exc.json_body['error']['message'])
+
+        # Update all the information
+        card.name = self.name or self.party.name
+        for key, value in self.address.get_address_for_stripe():
+            if value:
+                setattr(card, key, value)
+        card.exp_month = self.expiry_month
+        card.exp_year = self.expiry_year
+
+        try:
+            card.save()
+        except (
+            stripe.error.CardError, stripe.error.InvalidRequestError,
+            stripe.error.AuthenticationError, stripe.error.APIConnectionError,
+            stripe.error.StripeError
+        ), exc:
+            raise UserError(exc.json_body['error']['message'])
 
     @classmethod
     def create_profile_using_stripe_token(
@@ -79,6 +117,7 @@ class PaymentProfile:
             raise UserError(exc.json_body['error']['message'])
         else:
             profile, = PaymentProfile.create([{
+                'name': card.name,
                 'party': party.id,
                 'address': address_id or party.addresses[0].id,
                 'gateway': gateway.id,
