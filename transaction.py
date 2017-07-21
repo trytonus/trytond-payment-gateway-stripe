@@ -5,12 +5,13 @@
     :copyright: (c) 2015 by Fulfil.IO Inc.
     :license: see LICENSE for more details.
 """
-import stripe
-
 from trytond.pool import Pool, PoolMeta
 from trytond.pyson import Eval, Bool, Not
 from trytond.model import fields
 from trytond.exceptions import UserError
+
+import stripe
+stripe.api_version = '2017-06-05'
 
 __metaclass__ = PoolMeta
 __all__ = [
