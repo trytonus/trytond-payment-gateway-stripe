@@ -5,12 +5,13 @@
     :copyright: (c) 2015 by Fulfil.IO Inc.
     :license: see LICENSE for more details.
 """
-import stripe
-
 from trytond.pool import PoolMeta, Pool
 from trytond.model import fields
 from trytond.rpc import RPC
 from trytond.exceptions import UserError
+
+import stripe
+stripe.api_version = '2017-06-05'
 
 __metaclass__ = PoolMeta
 __all__ = ['Address', 'PaymentProfile', 'Party']
