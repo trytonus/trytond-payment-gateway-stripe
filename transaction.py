@@ -72,6 +72,22 @@ class PaymentTransactionStripe:
     """
     __name__ = 'payment_gateway.transaction'
 
+    @property
+    def stripe_amount(self):
+        """
+        Stripe requires amounts in currencies that support decimals to be
+        multiplied by 100 while the other ones sent as such.
+
+        https://stripe.com/docs/currencies#zero-decimal
+        """
+        if self.currency.code in (
+                'BIF', 'XAF', 'XPF', 'CLP',
+                'KMF', 'DJF', 'GNF', 'JPY',
+                'MGA', 'PYG', 'RWF', 'KRW',
+                'VUV', 'VND', 'XOF'):
+            return int(self.amount)
+        return int(self.amount * 100)
+
     def authorize_stripe(self, card_info=None):
         """
         Authorize using stripe.
@@ -118,7 +134,7 @@ class PaymentTransactionStripe:
 
         try:
             charge = stripe.Charge.retrieve(self.provider_reference)
-            charge = charge.capture(amount=int(self.amount * 100))
+            charge = charge.capture(amount=self.stripe_amount)
         except (
             stripe.error.InvalidRequestError,
             stripe.error.AuthenticationError, stripe.error.APIConnectionError,
@@ -181,7 +197,7 @@ class PaymentTransactionStripe:
         stripe
         """
         charge_data = {
-            'amount': int(self.amount * 100),
+            'amount': self.stripe_amount,
             'currency': self.currency.code.lower(),
         }
 
@@ -258,7 +274,7 @@ class PaymentTransactionStripe:
         try:
             refund = stripe.Refund.create(
                 charge=self.origin.provider_reference,
-                amount=int(self.amount * 100),  # Amount is in cents
+                amount=self.stripe_amount
             )
         except (
             stripe.error.InvalidRequestError,
