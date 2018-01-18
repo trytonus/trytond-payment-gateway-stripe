@@ -442,5 +442,5 @@ class TestPaymentGateway:
         assert card.address_line2 == payment_profile.address.streetbis
         assert card.address_city == payment_profile.address.city
         assert card.address_zip == payment_profile.address.zip
-        assert card.address_state == payment_profile.address.subdivision.code
-        assert card.address_country == payment_profile.address.country.code
+        assert card.address_state == payment_profile.address.subdivision.name
+        assert card.address_country == payment_profile.address.country.name

@@ -73,7 +73,7 @@ class PaymentProfile:
 
         # Update all the information
         card.name = self.name or self.party.name
-        for key, value in self.address.get_address_for_stripe():
+        for key, value in self.address.get_address_for_stripe().iteritems():
             if value:
                 setattr(card, key, value)
         card.exp_month = self.expiry_month
