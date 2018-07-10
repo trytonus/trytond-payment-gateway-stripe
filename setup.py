@@ -20,7 +20,7 @@ major_version = int(major_version)
 minor_version = int(minor_version)
 
 requires = [
-    'stripe'
+    'stripe<2.0,>=1.0'
 ]
 
 MODULE2PREFIX = {
